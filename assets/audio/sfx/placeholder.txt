@@ -1,0 +1,1 @@
+Folder untuk suara senjata, skill, elemen, monster, dan interaksi.
