@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+:root {
+  --bg: #0a0814;
+  --panel: rgba(14, 10, 32, 0.86);
+  --panel-edge: #4b3a8c;
+  --text: #f1ecff;
+  --muted: #9c93c4;
+  --hp: #e8445a;
+  --mp: #3aa0ff;
+  --xp: #b56bff;
+  --gold: #ffd24a;
+
+  --api: #ff5a2a;
+  --air: #3aa0ff;
+  --tanah: #c8944f;
+  --petir: #ffd93a;
+  --udara: #7fe8ff;
+
+  --font: 'Press Start 2P', 'Courier New', monospace;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+
+html, body {
+  margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+  font-family: var(--font); touch-action: none; overscroll-behavior: none;
+}
