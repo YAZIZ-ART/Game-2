@@ -1,12 +1,34 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <meta name="theme-color" content="#10131c">
     <title>Aetheria: Echoes of the Five Elements</title>
+
+    <link rel="stylesheet" href="css/main.css">
 </head>
+
 <body>
-    <h1>Aetheria: Echoes of the Five Elements</h1>
-    <p>Game sedang dipersiapkan...</p>
+    <main id="game-container">
+
+        <section id="game-screen">
+            <canvas id="gameCanvas">
+                Browser kamu tidak mendukung Canvas.
+            </canvas>
+        </section>
+
+        <section id="loading-screen">
+            <h1>AETHERIA</h1>
+            <p>Echoes of the Five Elements</p>
+            <span>Preparing the world...</span>
+        </section>
+
+    </main>
+
+    <script src="js/main.js"></script>
 </body>
 </html>
