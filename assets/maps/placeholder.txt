@@ -1,0 +1,1 @@
+Folder untuk menyimpan data peta Lunareth Village, Forest, dan Dungeon.
