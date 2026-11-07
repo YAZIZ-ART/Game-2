@@ -1,28 +1,139 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-:root {
-  --bg: #0a0814;
-  --panel: rgba(14, 10, 32, 0.86);
-  --panel-edge: #4b3a8c;
-  --text: #f1ecff;
-  --muted: #9c93c4;
-  --hp: #e8445a;
-  --mp: #3aa0ff;
-  --xp: #b56bff;
-  --gold: #ffd24a;
-
-  --api: #ff5a2a;
-  --air: #3aa0ff;
-  --tanah: #c8944f;
-  --petir: #ffd93a;
-  --udara: #7fe8ff;
-
-  --font: 'Press Start 2P', 'Courier New', monospace;
+* {
+  box-sizing: border-box;
 }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
-
 html, body {
-  margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
-  font-family: var(--font); touch-action: none; overscroll-behavior: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #090814;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+#app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+#topbar {
+  height: 42px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: #151225;
+  border-bottom: 1px solid #302947;
+  font-size: 13px;
+}
+
+#status {
+  color: #bcb4d5;
+  font-size: 11px;
+}
+
+#game-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+
+#touch-controls {
+  position: absolute;
+  inset: auto 0 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  padding: 0 14px;
+  pointer-events: none;
+}
+
+#touch-controls button {
+  pointer-events: auto;
+  color: white;
+  background: rgba(28, 24, 48, .85);
+  border: 1px solid #8575b8;
+  border-radius: 10px;
+  min-width: 46px;
+  min-height: 44px;
+  font-weight: bold;
+  touch-action: none;
+}
+
+.dpad {
+  display: grid;
+  grid-template-columns: 46px 46px 46px;
+  grid-template-rows: 44px 44px;
+  gap: 4px;
+}
+
+.dpad button:nth-child(1) {
+  grid-column: 2;
+}
+
+.dpad button:nth-child(2) {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.dpad button:nth-child(3) {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.dpad button:nth-child(4) {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, 70px);
+  gap: 7px;
+}
+
+.actions button {
+  font-size: 11px;
+}
+
+#touch-controls button:active,
+#touch-controls button.active {
+  background: #7655c8;
+}
+
+#error {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 10;
+  padding: 10px;
+  background: #8d1717;
+  color: white;
+  border-radius: 6px;
+  font: 12px monospace;
+  white-space: pre-wrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  #touch-controls {
+    opacity: .35;
+  }
+
+  #touch-controls:hover {
+    opacity: 1;
+  }
 }
