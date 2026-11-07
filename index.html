@@ -4,7 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Aetheria: Echoes of the Five Elements</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/main.css">
+
+  <!-- Menampilkan error / file yang gagal dimuat langsung di layar (berguna di HP) -->
+  <script>
+    window.addEventListener('error', function (e) {
+      var msg;
+      if (e.target && e.target !== window && (e.target.src || e.target.href)) {
+        msg = 'Gagal memuat: ' + (e.target.src || e.target.href).split('/').slice(-2).join('/');
+      } else {
+        msg = (e.message || 'Error') + ' [' + String(e.filename || '').split('/').pop() + ':' + e.lineno + ']';
+      }
+      var b = document.getElementById('err');
+      if (!b) {
+        b = document.createElement('pre');
+        b.id = 'err';
+        b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99998;margin:0;padding:6px;' +
+          'background:rgba(120,0,0,.92);color:#fff;font:11px monospace;white-space:pre-wrap;max-height:35%;overflow:auto';
+        document.body.appendChild(b);
+      }
+      b.textContent += msg + '\n';
+    }, true);
+  </script>
 </head>
 <body>
   <div id="game-wrap">
@@ -24,6 +45,7 @@
         <button id="btn-attack" type="button">Serang</button>
         <button id="btn-skill" type="button">Skill</button>
         <button id="btn-elem" type="button">Elemen</button>
+        <button id="btn-dash" type="button">Dash</button>
       </div>
     </div>
   </div>
