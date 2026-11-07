@@ -1,71 +1,159 @@
-/* Aetheria — game.js : loop utama dan alur game */
+
 'use strict';
 
-const Game = {
-  canvas: null, ctx: null, state: 'loading', player: null, cam: { x: 0, y: 0 }, last: 0,
+(() => {
 
-  init: function () {
-    this.canvas = document.getElementById('game');
-    this.ctx = this.canvas.getContext('2d');
-    this.ctx.imageSmoothingEnabled = false;
-    Assets.load(function () {
-      UI.init();
-      Game.toMenu();
-      requestAnimationFrame(Game.loop);
-    });
-  },
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
 
-  toMenu: function () {
-    this.state = 'menu';
-    UI.showMenu(function (id) { Game.start(id); });
-  },
+  const status = document.getElementById('status');
+  const errorBox = document.getElementById('error');
 
-  start: function (charId) {
-    GameMap.generate();
-    FX.clear(); Combat.reset(); Input.clear();
-    this.player = new Player(charId);
-    UI.hideMenu();
-    this.state = 'play';
-  },
+  // Kompatibilitas Assets
+  if (typeof window.Assets === 'undefined') {
 
-  update: function (dt) {
-    const p = this.player;
-    if (!p) return;
-    if (!p.dead) {
-      p.update(dt, Input.dir());
-      if (Input.held('attack')) Combat.attack(p);
-      if (Input.pressed('skill')) Combat.skill(p);
-      if (Input.pressed('elem')) { p.cycleElem(); const c = p.combo(); UI.flash(c ? c.name : ''); }
-      if (Input.pressed('dash')) p.dash();
-    }
-    Combat.update(dt, p);
-    FX.update(dt);
-    this.cam.x = Math.max(0, Math.min(GameMap.w - CFG.W, p.x - CFG.W / 2));
-    this.cam.y = Math.max(0, Math.min(GameMap.h - CFG.H, p.y - CFG.H / 2));
-    UI.updateHud(p, Combat, dt);
-    if (p.dead && this.state === 'play') {
-      this.state = 'over';
-      UI.showDialog('KALAH', 'Gelombang ' + Combat.wave + '\nSkor ' + Combat.score + '\nMusuh dikalahkan ' + Combat.kills, 'Menu', function () { Game.toMenu(); });
-    }
-  },
+    window.Assets = {
+      SPR: typeof SPR !== 'undefined' ? SPR : {},
+      SND: typeof SND !== 'undefined' ? SND : null,
 
-  render: function () {
-    const ctx = this.ctx;
-    ctx.fillStyle = '#0a0a14'; ctx.fillRect(0, 0, CFG.W, CFG.H);
-    if (!this.player || this.state === 'menu') return;
-    GameMap.draw(ctx, this.cam);
-    Combat.draw(ctx, this.cam);
-    this.player.draw(ctx, this.cam);
-    FX.draw(ctx, this.cam);
-  },
+      drawArt: typeof drawArt === 'function'
+        ? drawArt : null,
 
-  loop: function (t) {
-    const dt = Math.min(0.05, (t - Game.last) / 1000 || 0);
-    Game.last = t;
-    if (Game.state === 'play' || Game.state === 'over') Game.update(dt);
-    Game.render();
-    requestAnimationFrame(Game.loop);
+      drawWeapon: typeof drawWeapon === 'function'
+        ? drawWeapon : null,
+
+      drawMobBody: typeof drawMobBody === 'function'
+        ? drawMobBody : null,
+
+      drawBossBody: typeof drawBossBody === 'function'
+        ? drawBossBody : null
+    };
+
   }
-};
 
-Game.init();
+  let width = 0;
+  let height = 0;
+  let lastTime = 0;
+
+  function resize() {
+
+    const dpr = Math.min(
+      window.devicePixelRatio || 1,
+      2
+    );
+
+    const rect = canvas.getBoundingClientRect();
+
+    width = rect.width;
+    height = rect.height;
+
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    ctx.imageSmoothingEnabled = false;
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  function showError(error) {
+
+    errorBox.hidden = false;
+
+    errorBox.textContent =
+      'AETHERIA ERROR: ' +
+      (error.message || String(error));
+
+    status.textContent = 'Terjadi error';
+
+  }
+
+  window.addEventListener('error', e => {
+    showError(e.error || e.message);
+  });
+
+  function checkModules() {
+
+    if (typeof CHARACTERS === 'undefined') {
+      throw new Error(
+        'CHARACTERS tidak ditemukan. Periksa config.js.'
+      );
+    }
+
+    if (typeof ELEMENTS === 'undefined') {
+      throw new Error(
+        'ELEMENTS tidak ditemukan. Periksa config.js.'
+      );
+    }
+
+  }
+
+  function render(time) {
+
+    const delta = Math.min(
+      0.05,
+      (time - lastTime) / 1000 || 0
+    );
+
+    lastTime = time;
+
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.fillStyle = '#090814';
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.textAlign = 'center';
+
+    ctx.fillStyle = '#e8ddff';
+    ctx.font = 'bold 22px Arial';
+
+    ctx.fillText(
+      'AETHERIA',
+      width / 2,
+      height / 2 - 30
+    );
+
+    ctx.fillStyle = '#aaa0c4';
+    ctx.font = '12px Arial';
+
+    ctx.fillText(
+      'Modul berhasil dimuat',
+      width / 2,
+      height / 2
+    );
+
+    const movement = GameInput.vector();
+
+    if (movement.x || movement.y) {
+
+      ctx.fillText(
+        'Input: ' + movement.x + ', ' + movement.y,
+        width / 2,
+        height / 2 + 25
+      );
+
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  try {
+
+    checkModules();
+
+    status.textContent =
+      'Aset karakter: ' +
+      Object.keys(window.Assets.SPR).length;
+
+    requestAnimationFrame(render);
+
+  } catch (error) {
+
+    showError(error);
+    requestAnimationFrame(render);
+
+  }
+
+})();
