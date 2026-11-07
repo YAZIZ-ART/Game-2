@@ -11,11 +11,19 @@
 
 const UI = (function () {
   const $ = function (id) { return document.getElementById(id); };
-  const hudEl = $('hud'), menuEl = $('menu'), dlgEl = $('dialog');
-  let H = null;
+  const hudEl = $('hud'), menuEl = $('menu'), dlgEl = $('dialog'), uiEl = $('ui'), touchEl = $('touch');
+  let H = null, selId = 'akira', bannerEl = null, toastEl = null, bannerTm = 0, toastTm = 0;
 
-  /* ---------- CSS tambahan (melengkapi css/main.css) ---------- */
-  (function () {
-    const s = document.createElement('style');
-    s.textContent = [
-      '.menu-grid{max-height:46%;touch-action:pan-y;-webkit-overflow-scrolling:touch}',
+  const KIND = { nova: 'Ledakan', cone: 'Semburan', wave: 'Gelombang', rain: 'Hujan serangan', zone: 'Area',
+    aura: 'Aura', chain: 'Rantai kilat', heal: 'Pemulihan', shield: 'Perisai', dash: 'Terjang kilat' };
+
+  function mk(tag, cls, html) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html !== undefined) e.innerHTML = html;
+    return e;
+  }
+  function portraitCanvas(id, size) {
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const x = c.getContext('2d');
