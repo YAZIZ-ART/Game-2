@@ -19,3 +19,10 @@
 
   --font: 'Press Start 2P', 'Courier New', monospace;
 }
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+
+html, body {
+  margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+  font-family: var(--font); touch-action: none; overscroll-behavior: none;
+}
