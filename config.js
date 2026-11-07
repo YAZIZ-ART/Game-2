@@ -1,29 +1,28 @@
-/* =====================================================================
-   Aetheria: Echoes of the Five Elements
-   js/config.js : semua data game (elemen, 40 kombinasi, senjata, karakter, musuh)
-   ===================================================================== */
-'use strict';
+const CHARACTERS = {};
+WEAPON_DATA.forEach(function (w, i) {
+  WEAPONS[w[0]] = {
+    id: w[0], name: w[2], element: w[3],
+    damage: 8 + (i % 6) * 2,
+    range: 18 + (i % 5) * 6,
+    speed: 0.35 + (i % 4) * 0.05
+  };
+  CHARACTERS[w[1].toLowerCase()] = {
+    id: w[1].toLowerCase(), name: w[1], weapon: w[0], element: w[3],
+    hp: 100 + (i % 5) * 10,
+    mana: 60 + (i % 4) * 10,
+    speed: 70 + (i % 3) * 5
+  };
+});
+const CHARACTER_IDS = Object.keys(CHARACTERS);
+const WEAPON_IDS = Object.keys(WEAPONS);
 
-const CFG = {
-  W: 480,          // lebar kanvas internal
-  H: 270,          // tinggi kanvas internal
-  TILE: 16,        // ukuran satu tile
-  GAME_TITLE: 'Aetheria: Echoes of the Five Elements',
-  PATH: {          // lokasi gambar, nama file = id (huruf kecil) + .png
-    characters: 'assets/characters/',
-    weapons:    'assets/weapons/',
-    enemies:    'assets/enemies/',
-    effects:    'assets/effects/',
-    tiles:      'assets/tiles/',
-    maps:       'assets/maps/',
-    ui:         'assets/ui/',
-    audio:      'assets/audio/'
-  }
+/* ---------- Musuh ---------- */
+const ENEMIES = {
+  slime:    { id: 'slime',    name: 'Slime',        element: 'air',   hp: 30,  damage: 4,  speed: 30, xp: 5 },
+  imp:      { id: 'imp',      name: 'Imp Bara',     element: 'api',   hp: 40,  damage: 6,  speed: 45, xp: 8 },
+  golem:    { id: 'golem',    name: 'Golem Batu',   element: 'tanah', hp: 90,  damage: 10, speed: 22, xp: 15 },
+  wisp:     { id: 'wisp',     name: 'Wisp Kilat',   element: 'petir', hp: 35,  damage: 7,  speed: 55, xp: 10 },
+  sylph:    { id: 'sylph',    name: 'Sylph Badai',  element: 'angin', hp: 45,  damage: 6,  speed: 60, xp: 10 },
+  boss:     { id: 'boss',     name: 'Penjaga Lima Elemen', element: 'api', hp: 600, damage: 18, speed: 35, xp: 200 }
 };
-
-/* ---------- 5 elemen dasar (kunci "petir" = elemen Listrik) ---------- */
-const ELEMENTS = {
-  api:   { id: 'api',   name: 'Api',     icon: '\uD83D\uDD25', color: '#ff5a2a', dark: '#5a1608', glow: '#ffb07a' },
-  air:   { id: 'air',   name: 'Air',     icon: '\uD83D\uDCA7', color: '#3aa0ff', dark: '#0c2e5a', glow: '#9fd8ff' },
-  tanah: { id: 'tanah', name: 'Tanah',   icon: '\uD83E\uDEA8', color: '#c8944f', dark: '#4a3318', glow: '#f0d09a' },
-  petir: { id: 'petir', name: 'Listrik', icon: '\u26A1',       color: '#ffd93a', dark: '#544508', glow: '#fff3a0' },
+const ENEMY_IDS = Object.keys(ENEMIES);
