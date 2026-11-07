@@ -1,0 +1,1 @@
+Folder untuk menyimpan sprite dan animasi monster Aetheria.
