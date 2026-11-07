@@ -1,0 +1,1 @@
+Folder untuk menyimpan tileset tanah, rumput, air, jalan, dan bangunan.
