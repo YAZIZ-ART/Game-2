@@ -1,1 +1,0 @@
-Folder untuk ikon, tombol, HUD, inventaris, dan tampilan menu game.
