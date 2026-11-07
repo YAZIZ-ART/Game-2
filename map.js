@@ -1,201 +1,143 @@
 'use strict';
-/* ===== entities.js — pemain, monster, bos (AI + gambar) ===== */
-const FACE_ANG = { d: Math.PI / 2, u: -Math.PI / 2, l: Math.PI, r: 0 };
-function faceFromAng(a) { const c = Math.cos(a), s = Math.sin(a); return Math.abs(c) > Math.abs(s) ? (c > 0 ? 'r' : 'l') : (s > 0 ? 'd' : 'u'); }
-function angDiff(a, b) { let d = a - b; while (d > Math.PI) d -= 6.283; while (d < -Math.PI) d += 6.283; return d; }
+/* ===== map.js — dunia 3 biome: hutan, dataran abu (lava), puncak badai ===== */
+function hash2(x, y, s) {
+  let h = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(s | 0, 1442695041)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+}
+function vnoise(x, y, sc, s) {
+  const fx = x / sc, fy = y / sc, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+  const sm = t => t * t * (3 - 2 * t), a = hash2(ix, iy, s), b = hash2(ix + 1, iy, s), c = hash2(ix, iy + 1, s), d = hash2(ix + 1, iy + 1, s);
+  const u = sm(tx), v = sm(ty);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+/* tile: 0 rumput,1 rumput gelap,2 jalan,3 air,4 air dalam,5 pasir,6 abu,7 lava,8 lantai batu,9 tebing,10 rumput ungu,11 air mana */
+const World = {
+  W: WORLD_W, H: WORLD_H, t: null, zt: null, props: [], grid: {}, base: null, spawn: { x: 0, y: 0 }, arenas: [],
+  gen() {
+    const W = this.W, H = this.H, t = new Uint8Array(W * H), zt = new Uint8Array(W * H);
+    this.t = t; this.zt = zt; this.props = []; this.grid = {}; this.arenas = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const b = x + (vnoise(x, y, 18, 1) - 0.5) * 14, z = b < 40 ? 0 : b < 80 ? 1 : 2; let v;
+      if (z === 0) { v = vnoise(x, y, 5, 3) > 0.62 ? 1 : 0; const l = vnoise(x, y, 13, 5); if (l > 0.68) v = 3; if (l > 0.76) v = 4; }
+      else if (z === 1) { v = 6; if (vnoise(x, y, 11, 6) > 0.7) v = 7; else if (vnoise(x, y, 9, 7) > 0.74) v = 9; }
+      else { v = 10; if (vnoise(x, y, 11, 8) > 0.7) v = 11; else if (vnoise(x, y, 9, 9) > 0.74) v = 9; }
+      t[y * W + x] = v; zt[y * W + x] = z;
+    }
+    const carve = (cx, cy, r, v) => { for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) { if (x < 0 || y < 0 || x >= W || y >= H) continue; if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r) t[y * W + x] = v; } };
+    const path = (a, b) => { const n = Math.hypot(b[0] - a[0], b[1] - a[1]); for (let i = 0; i <= n; i++) { const k = i / n; carve(a[0] + (b[0] - a[0]) * k + Math.sin(k * 9 + a[0]) * 3, a[1] + (b[1] - a[1]) * k + Math.cos(k * 7 + a[1]) * 3, 1.8, 2); } };
+    const pts = [SPAWN_TILE, ...BOSSES.map(b => [b.tx, b.ty])];
+    for (let i = 0; i < pts.length - 1; i++) path(pts[i], pts[i + 1]);
+    carve(SPAWN_TILE[0], SPAWN_TILE[1], 6, 0);
+    BOSSES.forEach(b => { carve(b.tx, b.ty, 9, 8); this.arenas.push({ x: (b.tx + 0.5) * TILE, y: (b.ty + 0.5) * TILE, r: 9 * TILE }); });
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (x < 2 || y < 2 || x >= W - 2 || y >= H - 2) t[y * W + x] = 9;
+    const c0 = t.slice();
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const v = c0[y * W + x]; if (v > 1) continue;
+      if ([c0[y * W + x - 1], c0[y * W + x + 1], c0[(y - 1) * W + x], c0[(y + 1) * W + x]].some(n => n === 3 || n === 4)) t[y * W + x] = 5;
+    }
+    this.spawn = { x: (SPAWN_TILE[0] + 0.5) * TILE, y: (SPAWN_TILE[1] + 0.5) * TILE };
+    /* props */
+    const addP = (type, x, y, sr, v) => { const p = { t: type, x, y, sr: sr || 0, v: v || 0, sw: Math.random() * 6 }; this.props.push(p); const k = (x / 64 | 0) + (y / 64 | 0) * 1000; (this.grid[k] = this.grid[k] || []).push(p); };
+    const nearPath = (x, y) => { for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const v = t[(y + j) * W + x + i]; if (v === 2 || v === 8) return true; } return false; };
+    for (let y = 3; y < H - 3; y++) for (let x = 3; x < W - 3; x++) {
+      const v = t[y * W + x], z = zt[y * W + x]; if (nearPath(x, y)) continue;
+      if (Math.hypot(x - SPAWN_TILE[0], y - SPAWN_TILE[1]) < 7) continue;
+      const px = (x + 0.5) * TILE + (Math.random() - 0.5) * 8, py = (y + 0.5) * TILE + (Math.random() - 0.5) * 8, r = Math.random();
+      if (z === 0 && (v === 0 || v === 1)) { const d = v === 1 ? 0.17 : 0.05; if (r < d) addP('tree', px, py, 4, Math.random() < 0.3 ? 1 : 0); else if (r < d + 0.02) addP('bush', px, py, 0); else if (r < d + 0.035) addP(Math.random() < 0.5 ? 'rock' : 'mush', px, py, 5); }
+      else if (z === 1 && v === 6) { if (r < 0.025) addP('dead', px, py, 3); else if (r < 0.05) addP('rock', px, py, 5); }
+      else if (z === 2 && v === 10) { if (r < 0.03) addP('crystal', px, py, 5, Math.random() < 0.5 ? 1 : 0); else if (r < 0.05) addP('rock', px, py, 5); }
+    }
+    this.arenas.forEach((a, ai) => {
+      for (let i = 0; i < 10; i++) { const an = i / 10 * 6.283 + 0.3; addP(i % 2 ? 'torch' : 'pillar', a.x + Math.cos(an) * 8.3 * TILE, a.y + Math.sin(an) * 8.3 * TILE, 5); }
+    });
+    this.buildBase();
+  },
+  solid(tx, ty) {
+    if (tx < 0 || ty < 0 || tx >= this.W || ty >= this.H) return true;
+    const v = this.t[ty * this.W + tx]; return v === 3 || v === 4 || v === 7 || v === 9 || v === 11;
+  },
+  blocked(x, y, r) {
+    const x0 = Math.floor((x - r) / TILE), x1 = Math.floor((x + r) / TILE), y0 = Math.floor((y - r * 0.6) / TILE), y1 = Math.floor((y + r * 0.6) / TILE);
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (this.solid(tx, ty)) return true;
+    const cx = (x / 64) | 0, cy = (y / 64) | 0;
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+      const c = this.grid[(cx + i) + (cy + j) * 1000]; if (!c) continue;
+      for (const p of c) if (p.sr && (p.x - x) ** 2 + (p.y - y) ** 2 < (p.sr + r) ** 2) return true;
+    }
+    return false;
+  },
+  zoneAt(x, y) { const tx = clamp(x / TILE | 0, 0, this.W - 1), ty = clamp(y / TILE | 0, 0, this.H - 1); return this.zt[ty * this.W + tx]; },
+  nearestWalkable(x, y) { for (let r = 0; r < 80; r += 6) for (let a = 0; a < 6.3; a += 0.8) { const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r; if (!this.blocked(px, py, 6)) return { x: px, y: py }; } return { x, y }; },
 
-/* ---------- PEMAIN ---------- */
-function createPlayer(ch) {
-  const p = { ch, w: WEAPONS[ch.wk], wk: ch.wk, el: ch.el, x: World.spawn.x, y: World.spawn.y, face: 'd', ang: Math.PI / 2, lvl: 1, exp: 0,
-    mxhp: 1, mxmp: 1, atk: 1, spd: 1, hp: 1, mp: 1, slots: [null, null, null, null, null], sec: {}, cd: {}, atkT: 0, castT: 0, inv: 0, dashCd: 0,
-    hurt: 0, walk: 0, moving: false, anim: null, pending: [], stun: 0, dash: null, kbx: 0, kby: 0, lastHit: 9, kills: 0, glowT: 0, charge: null,
-    dmgMul: ch.el === 'fire' ? 1.12 : 1 };
-  secList(ch).slice(0, 2).forEach(e => { p.sec[e] = true; });
-  recalc(p, true); autoFill(p); return p;
-}
-function recalc(p, full) {
-  const b = baseStats(p.ch), L = p.lvl;
-  p.mxhp = Math.round(b.hp + (L - 1) * 16 * (p.el === 'earth' ? 1.2 : 1)); p.mxmp = Math.round(b.mp + (L - 1) * 7);
-  p.atk = b.atk + (L - 1) * 2.6; p.spd = b.spd;
-  if (full) { p.hp = p.mxhp; p.mp = p.mxmp; }
-}
-function otherElem(p, s) { return s.elems.find(e => e !== p.el); }
-function skillReq(p, s) { return Math.max(s.req, SEC_REQ[secList(p.ch).indexOf(otherElem(p, s))]); }
-function skillUnlocked(p, s) { return p.lvl >= skillReq(p, s); }
-function skillUsable(p, s) { return s.elems.includes(p.el) && !!p.sec[otherElem(p, s)] && skillUnlocked(p, s); }
-function skillsOfSec(p, e) { return [0, 1, 2, 3].map(t => SKILLS[pairKey(p.el, e) + ':' + t]); }
-function autoFill(p) {
-  for (let i = 0; i < 5; i++) { const id = p.slots[i]; if (id && (!skillUsable(p, SKILLS[id]) || (i === 4) !== (SKILLS[id].tier === 3))) p.slots[i] = null; }
-  const usable = []; secList(p.ch).forEach(e => skillsOfSec(p, e).forEach(s => { if (skillUsable(p, s)) usable.push(s); }));
-  usable.sort((a, b) => a.tier - b.tier);
-  for (let i = 0; i < 4; i++) if (!p.slots[i]) { const c = usable.find(s => s.tier < 3 && !p.slots.includes(s.id)); if (c) p.slots[i] = c.id; }
-  if (!p.slots[4]) { const c = usable.find(s => s.tier === 3 && !p.slots.includes(s.id)); if (c) p.slots[4] = c.id; }
-}
-function movePlayer(p, dx, dy) {
-  if (!World.blocked(p.x + dx, p.y, 5)) p.x += dx;
-  if (!World.blocked(p.x, p.y + dy, 5)) p.y += dy;
-  p.x = clamp(p.x, 20, WORLD_W * TILE - 20); p.y = clamp(p.y, 20, WORLD_H * TILE - 20);
-}
-function updatePlayer(p, dt) {
-  p.atkT = Math.max(0, p.atkT - dt); p.castT = Math.max(0, p.castT - dt); p.inv = Math.max(0, p.inv - dt); p.hurt = Math.max(0, p.hurt - dt);
-  p.dashCd = Math.max(0, p.dashCd - dt); p.stun = Math.max(0, p.stun - dt); p.lastHit += dt;
-  for (let i = p.pending.length - 1; i >= 0; i--) { const q = p.pending[i]; q.t -= dt; if (q.t <= 0) { p.pending.splice(i, 1); q.fn(); } }
-  for (const id in p.cd) if (p.cd[id] > 0) p.cd[id] = Math.max(0, p.cd[id] - dt);
-  if (p.anim) { p.anim.t += dt; if (p.anim.t >= p.anim.dur) p.anim = null; }
-  if (p.charge) { p.charge.t -= dt; if (Math.random() < 0.7) FX.motif('swirl', p.x, p.y - 8, p.charge.cols, 2, 22); if (p.charge.t <= 0) p.charge = null; }
-  p.mp = Math.min(p.mxmp, p.mp + 2.4 * (p.el === 'water' ? 1.35 : 1) * dt);
-  if (p.lastHit > 5) p.hp = Math.min(p.mxhp, p.hp + p.mxhp * 0.012 * dt);
-  if (p.kbx || p.kby) { movePlayer(p, p.kbx * dt, p.kby * dt); const f = Math.pow(0.01, dt); p.kbx *= f; p.kby *= f; if (Math.abs(p.kbx) + Math.abs(p.kby) < 4) p.kbx = p.kby = 0; }
-  if (p.dash) {
-    const d = p.dash; movePlayer(p, d.vx * dt, d.vy * dt); d.t -= dt;
-    FX.puff(p.x, p.y - 8, ELEMENTS[p.el].c, 2, 12, 0.3, 3); if (d.t <= 0) p.dash = null; p.moving = false;
-  } else {
-    const m = Input.move(), len = Math.hypot(m.x, m.y);
-    if (len > 0.12 && p.stun <= 0) {
-      const sp = p.spd * (p.castT > 0 ? 0.5 : 1) * Math.min(1, len); const k = 1 / Math.max(1, len);
-      movePlayer(p, m.x * k * sp * dt, m.y * k * sp * dt);
-      if (!p.anim) { p.ang = Math.atan2(m.y, m.x); p.face = faceFromAng(p.ang); } p.moving = true; p.walk += dt;
-      if (Math.random() < 0.15) FX.puff(p.x, p.y, '#8a7a60', 1, 8, 0.4, 2, { add: false, al: 0.4 });
-    } else p.moving = false;
-  }
-}
-function drawPlayer(g, p, t) {
-  const c = p.ch, E = ELEMENTS[p.el], x = Math.round(p.x), y = Math.round(p.y), pul = 0.5 + 0.5 * Math.sin(t * 3);
-  g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = E.c; g.strokeStyle = E.c; g.lineWidth = 1.5;
-  g.globalAlpha = 0.14 + 0.1 * pul; g.beginPath(); g.ellipse(x, y - 1, 12 + pul * 2, 5.5 + pul, 0, 0, 6.283); g.fill();
-  g.globalAlpha = 0.45; g.stroke(); g.globalAlpha = 0.9;
-  for (let i = 0; i < 3; i++) { const a = t * 2.2 + i * 2.094; g.fillStyle = i ? E.l : E.c; g.fillRect(Math.round(x + Math.cos(a) * 12), Math.round(y - 9 + Math.sin(a) * 5 - 6 + Math.sin(t * 3 + i) * 2), 2, 2); }
-  g.restore();
-  g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x, y, 7, 3, 0, 0, 6.283); g.fill();
-  if (p.inv > 0 && p.hurt <= 0 && !p.dash && Math.floor(t * 20) % 2 && p.charge == null) g.globalAlpha = 0.5;
-  if (p.hurt > 0 && Math.floor(t * 30) % 2) g.globalAlpha = 0.4;
-  let ang = FACE_ANG[p.face] + ({ d: -0.9, u: 0.9, l: 0.7, r: -0.7 }[p.face]), ext = 0, a = p.anim, arcCol = E.l;
-  if (a) {
-    const k = clamp(a.t / a.dur, 0, 1), ae = 1 - (1 - k) * (1 - k);
-    switch (a.kind) {
-      case 'slash': ang = a.ang - a.arc / 2 + a.arc * ae; break;
-      case 'thrust': ang = a.ang; ext = Math.sin(k * Math.PI) * 14; break;
-      case 'smash': ang = a.ang + (k < 0.45 ? -1.5 * (k / 0.45) : -1.5 + 2.1 * ((k - 0.45) / 0.55)); break;
-      case 'spin': ang = a.ang + k * 6.283; break;
-      case 'shoot': ang = a.ang; ext = -3 * (1 - k); break;
+  buildBase() {
+    const W = this.W, H = this.H, cv = document.createElement('canvas'); cv.width = W * TILE; cv.height = H * TILE;
+    const g = cv.getContext('2d'); this.base = cv;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) this.drawTile(g, x, y);
+  },
+  drawTile(g, x, y) {
+    const W = this.W, v = this.t[y * W + x], z = this.zt[y * W + x], X = x * TILE, Y = y * TILE;
+    const h = k => hash2(x, y, k), R = (a, b, w, hh, c) => { g.fillStyle = c; g.fillRect(X + a, Y + b, w, hh); };
+    const at = (tx, ty) => (tx < 0 || ty < 0 || tx >= W || ty >= H) ? 9 : this.t[ty * W + tx];
+    const speck = (cols, n) => { for (let i = 0; i < n; i++) R((h(i + 10) * 15) | 0, (h(i + 30) * 15) | 0, 1 + (h(i + 50) > 0.7 ? 1 : 0), 1, cols[(h(i + 70) * cols.length) | 0]); };
+    switch (v) {
+      case 0: case 1: { const b = v ? ['#3d8f44', '#378840', '#43984a'] : ['#4fae4d', '#47a246', '#55b553']; R(0, 0, 16, 16, b[(h(1) * 3) | 0]); speck(v ? ['#2c7436', '#58b05a'] : ['#388a3c', '#6cc85a', '#5fbf58'], 7);
+        if (h(2) > 0.93) { const fc = ['#ff8ad8', '#ffe85a', '#ffffff', '#8ad8ff'][(h(3) * 4) | 0]; R(7, 7, 2, 2, fc); R(8, 6, 1, 1, '#ffe85a'); } break; }
+      case 2: { const c = z === 0 ? ['#c9a468', '#a88848', '#d8b878'] : z === 1 ? ['#6a6068', '#4a4048', '#7e747c'] : ['#7a7aa8', '#5a5a88', '#9090c0']; R(0, 0, 16, 16, c[0]); speck(c.slice(1), 8); break; }
+      case 5: R(0, 0, 16, 16, '#e8d49a'); speck(['#c8b47a', '#f6e8b8'], 6); break;
+      case 6: R(0, 0, 16, 16, '#4a4048'); speck(['#2a2228', '#6a5a60', '#3a3038'], 9); if (h(4) > 0.96) R(6, 6, 2, 2, '#ff6a2a'); break;
+      case 10: R(0, 0, 16, 16, '#54449a'); speck(['#7a6ad0', '#3e3280', '#8a7ae0'], 8); if (h(5) > 0.95) R(7, 7, 2, 2, '#c8a8ff'); break;
+      case 8: R(0, 0, 16, 16, '#6a6a8a'); R(0, 0, 16, 1, '#7e7ea0'); R(0, 0, 1, 16, '#7e7ea0'); R(0, 15, 16, 1, '#52527a'); R(15, 0, 1, 16, '#52527a'); speck(['#585878', '#7a7a9a'], 4); break;
+      case 3: case 4: case 11: {
+        const base = v === 3 ? '#2f7fe0' : v === 4 ? '#1f56b8' : '#6a3ad6', light = v === 11 ? '#c8a0ff' : '#aadcff';
+        R(0, 0, 16, 16, base); R(0, 8, 16, 8, shade(base, -12));
+        if (!(at(x, y - 1) === v)) R(0, 0, 16, 2, light); if (!(at(x, y + 1) === v)) R(0, 14, 16, 2, shade(base, -35));
+        if (!(at(x - 1, y) === v)) R(0, 0, 2, 16, light); if (!(at(x + 1, y) === v)) R(14, 0, 2, 16, light); break; }
+      case 7: R(0, 0, 16, 16, '#c83a0a'); for (let i = 0; i < 4; i++) R((h(i + 5) * 12) | 0, (h(i + 9) * 12) | 0, 4, 3, '#ff8a2a');
+        if (at(x, y - 1) !== 7) R(0, 0, 16, 2, '#ffd24a'); if (at(x, y + 1) !== 7) R(0, 14, 16, 2, '#7a1a0a'); break;
+      case 9: {
+        const pal = z === 0 ? ['#8a7560', '#4a3c30', '#a58f78'] : z === 1 ? ['#8a7882', '#3a2e36', '#a8949e'] : ['#7a7ab0', '#34345a', '#9a9ad0'];
+        const below = at(x, y + 1) === 9; R(0, 0, 16, 16, pal[0]); speck([pal[2], shade(pal[0], -20)], 8); R(0, 0, 16, 2, pal[2]);
+        if (!below) { R(0, 8, 16, 8, pal[1]); R(0, 8, 16, 1, shade(pal[1], -25)); R(3, 10, 1, 6, shade(pal[1], -20)); R(10, 10, 1, 5, shade(pal[1], -20)); R(0, 15, 16, 1, shade(pal[1], -35)); }
+        break; }
+    }
+  },
+  drawAnim(g, cam, t) { // kilau air & lava
+    const x0 = Math.max(0, (cam.x / TILE | 0) - 1), x1 = Math.min(this.W - 1, ((cam.x + cam.w) / TILE | 0) + 1), y0 = Math.max(0, (cam.y / TILE | 0) - 1), y1 = Math.min(this.H - 1, ((cam.y + cam.h) / TILE | 0) + 1);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const v = this.t[y * this.W + x]; if (v !== 3 && v !== 4 && v !== 7 && v !== 11) continue;
+      g.fillStyle = v === 7 ? 'rgba(255,214,90,.75)' : v === 11 ? 'rgba(225,190,255,.65)' : 'rgba(225,246,255,.6)';
+      for (let k = 0; k < 2; k++) { const ox = ((hash2(x, y, k) * 16 + t * (v === 7 ? 5 : 11) * (k ? 0.7 : 1)) % 16), oy = hash2(x, y, k + 4) * 13 + 1; g.fillRect(x * TILE + (ox | 0), y * TILE + (oy | 0), 3, 1); }
+      if (v === 7 && hash2(x, y, 9) > 0.9 && Math.sin(t * 4 + x) > 0.8) { g.fillStyle = '#fff3b0'; g.fillRect(x * TILE + 6, y * TILE + 6, 2, 2); }
+    }
+  },
+  propsInView(cam) {
+    const out = [], c0 = ((cam.x - 40) / 64) | 0, c1 = ((cam.x + cam.w + 40) / 64) | 0, r0 = ((cam.y - 40) / 64) | 0, r1 = ((cam.y + cam.h + 70) / 64) | 0;
+    for (let j = Math.max(0, r0); j <= r1; j++) for (let i = Math.max(0, c0); i <= c1; i++) { const c = this.grid[i + j * 1000]; if (c) for (const p of c) out.push(p); }
+    return out;
+  },
+  drawProp(g, p, t) {
+    const x = Math.round(p.x), y = Math.round(p.y), sw = Math.sin(t * 1.4 + p.sw);
+    const sh = (rx, ry) => { g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(x + 1, y, rx, ry, 0, 0, 6.283); g.fill(); };
+    const circ = (cx, cy, r, c) => { g.fillStyle = c; g.beginPath(); g.arc(cx, cy, r, 0, 6.283); g.fill(); };
+    switch (p.t) {
+      case 'tree': {
+        sh(10, 4); g.fillStyle = '#4a2c14'; g.fillRect(x - 2, y - 11, 4, 11); g.fillStyle = '#6b4423'; g.fillRect(x - 2, y - 11, 2, 11);
+        const a = p.v ? ['#c8842a', '#b87420', '#e8a848'] : ['#2f7a3a', '#276a31', '#58b04e'], o = sw * 1.2;
+        circ(x - 5 + o * 0.5, y - 15, 8, a[1]); circ(x + 6 + o * 0.5, y - 16, 8, a[1]); circ(x + o, y - 21, 11, a[0]); circ(x - 3 + o, y - 25, 7, a[2]);
+        g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.arc(x + 4 + o, y - 17, 7, 0, 3.14); g.fill(); break; }
+      case 'bush': sh(7, 3); circ(x - 3, y - 4, 5, '#2a6f35'); circ(x + 3, y - 4, 5, '#2f7a3a'); circ(x, y - 7, 5, '#58b04e'); g.fillStyle = '#ff5a7a'; g.fillRect(x - 3, y - 6, 2, 2); g.fillRect(x + 3, y - 4, 2, 2); break;
+      case 'rock': sh(8, 3); g.fillStyle = '#7a7684'; g.beginPath(); g.moveTo(x - 7, y); g.lineTo(x - 5, y - 8); g.lineTo(x + 2, y - 10); g.lineTo(x + 7, y - 4); g.lineTo(x + 7, y); g.fill(); g.fillStyle = '#a8a4b4'; g.beginPath(); g.moveTo(x - 5, y - 8); g.lineTo(x + 2, y - 10); g.lineTo(x + 1, y - 5); g.lineTo(x - 4, y - 4); g.fill(); break;
+      case 'mush': sh(5, 2); g.fillStyle = '#e8e0d0'; g.fillRect(x - 1, y - 5, 3, 5); circ(x, y - 6, 5, '#d83a4a'); g.fillStyle = '#fff'; g.fillRect(x - 3, y - 8, 2, 2); g.fillRect(x + 1, y - 6, 2, 2); break;
+      case 'dead': sh(6, 3); g.strokeStyle = '#2a2024'; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 16); g.stroke(); g.lineWidth = 1.6; g.beginPath(); g.moveTo(x, y - 10); g.lineTo(x - 8, y - 19); g.moveTo(x, y - 13); g.lineTo(x + 7, y - 22); g.moveTo(x - 4, y - 15); g.lineTo(x - 6, y - 24); g.stroke(); break;
+      case 'crystal': {
+        const pl = 0.6 + 0.4 * Math.sin(t * 2 + p.sw), c = p.v ? '#5ff0e0' : '#b06aff'; sh(7, 3);
+        g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.25 * pl; circ(x, y - 8, 12, c); g.restore();
+        g.fillStyle = shade(c, -60); g.beginPath(); g.moveTo(x - 6, y); g.lineTo(x - 3, y - 14); g.lineTo(x, y); g.fill();
+        g.fillStyle = c; g.beginPath(); g.moveTo(x - 2, y); g.lineTo(x + 2, y - 20); g.lineTo(x + 7, y); g.fill(); g.fillStyle = '#fff'; g.fillRect(x + 1, y - 14, 1, 8); break; }
+      case 'pillar': sh(8, 3); g.fillStyle = '#4a4a68'; g.fillRect(x - 5, y - 24, 10, 24); g.fillStyle = '#6a6a8a'; g.fillRect(x - 5, y - 24, 4, 24); g.fillStyle = '#8a8aaa'; g.fillRect(x - 7, y - 27, 14, 4); g.fillRect(x - 7, y - 3, 14, 3); g.fillStyle = '#33334a'; g.fillRect(x + 1, y - 16, 1, 7); break;
+      case 'torch': { sh(5, 2); g.fillStyle = '#3a3248'; g.fillRect(x - 2, y - 14, 4, 14); g.fillRect(x - 4, y - 16, 8, 3);
+        const f = 0.7 + 0.3 * Math.sin(t * 12 + p.sw); g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.22 * f; circ(x, y - 20, 16, '#ff8a2a'); g.globalAlpha = 0.9; circ(x, y - 20, 4 * f, '#ffa83a'); circ(x, y - 21, 2, '#fff2b0'); g.restore(); break; }
     }
   }
-  const hand = { d: [6, -11], u: [-6, -11], l: [-2, -11], r: [2, -11] }[p.face], wx = x + hand[0] + Math.cos(ang) * ext, wy = y + hand[1] + Math.sin(ang) * ext;
-  const drawW = () => { g.save(); g.translate(wx, wy); g.rotate(ang); drawWeapon(g, c.wk, p.w.len, E.c); g.restore(); };
-  const behind = Math.sin(ang) < -0.2;
-  if (behind) drawW();
-  const bob = p.moving ? (((p.walk * 8) | 0) % 2) : 0;
-  g.drawImage(SPR[c.id][p.face][bob], x - 12, y - 32 + (p.moving && bob ? -1 : 0));
-  if (!behind) drawW();
-  if (a && (a.kind === 'slash' || a.kind === 'spin' || a.kind === 'smash')) {
-    const k = clamp(a.t / a.dur, 0, 1); g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = (1 - k) * 0.9; g.strokeStyle = arcCol; g.lineWidth = 3;
-    g.beginPath(); const r = p.w.len * 0.95 + 6, s0 = a.kind === 'spin' ? a.ang : a.ang - a.arc / 2; g.arc(wx, wy, r, s0, ang); g.stroke(); g.restore();
-  }
-  g.globalAlpha = 1;
-}
-
-/* ---------- MUSUH ---------- */
-function makeEnemy(type, lv, el, x, y) {
-  const T = ENEMY_TYPES[type];
-  const e = { kind: 'mob', type, lv, el, x, y, hx: x, hy: y, r: T.r, mx: Math.round(T.hp * (1 + 0.3 * (lv - 1))), dmg: Math.round(T.dmg * (1 + 0.2 * (lv - 1))), spd: T.spd,
-    exp: Math.round(T.exp * (1 + 0.22 * (lv - 1))), hp: 0, atkT: Math.random(), flash: 0, st: {}, ph: Math.random() * 6, face: 1, dead: false, respawn: 0,
-    kbx: 0, kby: 0, fly: !!T.fly, ranged: !!T.ranged, lunge: 2, lungeT: 0, shootT: 1 + Math.random() * 2, wt: 0, wx: x, wy: y, fxT: 0 };
-  e.hp = e.mx; return e;
-}
-function makeBoss(def) {
-  const x = (def.tx + 0.5) * TILE, y = (def.ty + 0.5) * TILE;
-  return { kind: 'boss', id: def.id, name: def.name, type: def.id, lv: def.lv, el: def.el, x, y, hx: x, hy: y, r: def.r, mx: def.hp, hp: def.hp, dmg: def.dmg, spd: def.spd, exp: def.exp,
-    flash: 0, st: {}, ph: 0, face: 1, dead: false, respawn: 0, kbx: 0, kby: 0, engaged: false, pending: [], cdT: 2, busy: 0, phase: 1, dash: null, contactT: 0, bi: BOSSES.indexOf(def), rec: def.rec };
-}
-function moveEnt(e, dx, dy, r) {
-  r = r || e.r * 0.7;
-  if (e.fly) { e.x += dx; e.y += dy; } else { if (!World.blocked(e.x + dx, e.y, r)) e.x += dx; if (!World.blocked(e.x, e.y + dy, r)) e.y += dy; }
-  e.x = clamp(e.x, 24, WORLD_W * TILE - 24); e.y = clamp(e.y, 24, WORLD_H * TILE - 24);
-}
-function enemyStatus(e, dt) { // return multiplier kecepatan; <0 = stun
-  const st = e.st; let sp = 1;
-  if (st.burn) { st.burn.t -= dt; st.burn.k -= dt; if (st.burn.k <= 0) { st.burn.k = 0.5; Combat.dot(e, st.burn.d); } if (Math.random() < 0.3) FX.motif('ember', e.x, e.y - 8, [ELEMENTS.fire.c], 1, 6); if (st.burn.t <= 0) delete st.burn; }
-  if (st.slow) { st.slow.t -= dt; sp *= 0.45; if (Math.random() < 0.15) FX.motif('drop', e.x, e.y - 6, [ELEMENTS.water.c], 1, 6); if (st.slow.t <= 0) delete st.slow; }
-  if (st.stun) { st.stun.t -= dt; if (Math.random() < 0.2) FX.motif('spark', e.x, e.y - e.r - 8, [ELEMENTS.lightning.l], 1, 5); if (st.stun.t <= 0) delete st.stun; sp = -1; }
-  return sp;
-}
-function updateEnemy(e, dt) {
-  const P = Game.player;
-  if (e.dead) {
-    if (e.temp) return; e.respawn -= dt;
-    if (e.respawn <= 0) { if (Math.hypot(P.x - e.hx, P.y - e.hy) > 240) { e.dead = false; e.hp = e.mx; e.x = e.hx; e.y = e.hy; e.st = {}; } else e.respawn = 3; }
-    return;
-  }
-  e.flash = Math.max(0, e.flash - dt); e.atkT -= dt;
-  if (e.kbx || e.kby) { moveEnt(e, e.kbx * dt, e.kby * dt); const f = Math.pow(0.02, dt); e.kbx *= f; e.kby *= f; if (Math.abs(e.kbx) + Math.abs(e.kby) < 4) e.kbx = e.kby = 0; }
-  const sm = enemyStatus(e, dt); if (sm < 0) return;
-  const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy) || 1, aggro = d < 140 && P.hp > 0, spd = e.spd * sm;
-  if (aggro) {
-    e.face = dx >= 0 ? 1 : -1; const ux = dx / d, uy = dy / d;
-    if (e.type === 'slime') { const hop = (Game.t * 0.9 + e.ph) % 1; const f = hop < 0.45 ? 1.7 : 0.1; moveEnt(e, ux * spd * f * dt, uy * spd * f * dt); }
-    else if (e.type === 'wolf') {
-      e.lunge -= dt; let f = 1; if (e.lungeT > 0) { e.lungeT -= dt; f = 3.2; } else if (e.lunge <= 0 && d < 110) { e.lunge = 3; e.lungeT = 0.35; FX.text(e.x, e.y - 18, '!', '#ff4a4a', 10); }
-      moveEnt(e, ux * spd * f * dt, uy * spd * f * dt);
-    } else if (e.type === 'bat') { const w = Math.sin(Game.t * 4 + e.ph) * 0.9; moveEnt(e, (ux * Math.cos(w) - uy * Math.sin(w)) * spd * dt, (uy * Math.cos(w) + ux * Math.sin(w)) * spd * dt); }
-    else { // mage
-      if (d > 120) moveEnt(e, ux * spd * dt, uy * spd * dt); else if (d < 70) moveEnt(e, -ux * spd * dt, -uy * spd * dt);
-      e.shootT -= dt; if (e.shootT <= 0 && d < 190) { e.shootT = 2.2; Combat.eProj({ x: e.x, y: e.y - 14, ang: Math.atan2(dy, dx), speed: 95, dmg: e.dmg, r: 5, life: 2.5, kind: 'orb', col: ELEMENTS[e.el].c }); }
-    }
-    if (d < e.r + 8 && e.atkT <= 0 && !e.ranged) { e.atkT = 1; Combat.damagePlayer(e.dmg, e); }
-  } else {
-    e.wt -= dt; if (e.wt <= 0) { e.wt = rnd(2, 4); e.wx = e.hx + rnd(-40, 40); e.wy = e.hy + rnd(-40, 40); }
-    const wx = e.wx - e.x, wy = e.wy - e.y, wd = Math.hypot(wx, wy);
-    if (wd > 3) moveEnt(e, wx / wd * spd * 0.4 * dt, wy / wd * spd * 0.4 * dt);
-    if (Math.hypot(e.x - e.hx, e.y - e.hy) > 200) { e.x += (e.hx - e.x) * dt; e.y += (e.hy - e.y) * dt; }
-    e.hp = Math.min(e.mx, e.hp + e.mx * 0.05 * dt);
-  }
-}
-function drawMob(g, e, t) {
-  drawMobBody(g, e, t);
-  if (e.hp < e.mx) { const w = 16, x = Math.round(e.x - w / 2), y = Math.round(e.y - (e.type === 'mage' ? 36 : e.type === 'bat' ? 24 : 20)); g.fillStyle = '#1a0f2a'; g.fillRect(x - 1, y - 1, w + 2, 4); g.fillStyle = '#ff4a5a'; g.fillRect(x, y, Math.max(1, w * e.hp / e.mx), 2); }
-  if (e.st.slow) { g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.25; g.fillStyle = '#4ac8ff'; g.beginPath(); g.ellipse(e.x, e.y - 6, 9, 9, 0, 0, 6.283); g.fill(); g.restore(); }
-}
-
-/* ---------- BOS ---------- */
-function bossAttack(b, name) {
-  const P = Game.player, ph = b.phase, col = ELEMENTS[b.el].c, a = Math.atan2(P.y - b.y, P.x - b.x), q = (t, fn) => b.pending.push({ t, fn });
-  FX.ring(b.x, b.y, 4, b.r * 2, 0.4, col, 2);
-  switch (name) {
-    case 'charge': FX.text(b.x, b.y - 56, '!', '#ff4a4a', 14); b.busy = 1.5;
-      q(0.8, () => { const a2 = Math.atan2(P.y - b.y, P.x - b.x); b.dash = { vx: Math.cos(a2) * 250, vy: Math.sin(a2) * 250, t: 0.55 }; SND.sfx('dodge'); }); break;
-    case 'slam': b.busy = 1.6; Combat.eRing(b.x, b.y, 105, b.dmg * 1.2, 0.8, col);
-      q(0.5, () => { for (let i = 0; i < (ph === 2 ? 7 : 4); i++) { const an = Math.random() * 6.283, d = Math.random() * 70; Combat.hazard(P.x + Math.cos(an) * d, P.y + Math.sin(an) * d * 0.7, 24, b.dmg, 0.9, col); } }); break;
-    case 'rocks': b.busy = 1.3; for (let i = -2; i <= 2; i++) if (ph === 2 || Math.abs(i) < 2) q(0.4, () => Combat.eProj({ x: b.x, y: b.y - 14, ang: a + i * 0.22, speed: 125, dmg: b.dmg * 0.7, r: 6, life: 3, kind: 'rock', col })); break;
-    case 'fan': b.busy = 1.4; for (let i = -3; i <= 3; i++) if (ph === 2 || Math.abs(i) < 3) q(0.5, () => Combat.eProj({ x: b.x, y: b.y - 20, ang: a + i * 0.25, speed: 130, dmg: b.dmg * 0.8, r: 7, life: 3, kind: 'fireball', col })); break;
-    case 'meteors': b.busy = 2; for (let i = 0; i < (ph === 2 ? 8 : 5); i++) q(0.2 + i * 0.22, () => { const an = Math.random() * 6.283, d = i ? Math.random() * 80 : 0; Combat.hazard(P.x + Math.cos(an) * d, P.y + Math.sin(an) * d * 0.7, 28, b.dmg * 1.2, 0.8, col, { meteor: true }); }); break;
-    case 'breath': b.busy = 1.6; for (let i = 0; i < (ph === 2 ? 14 : 9); i++) q(0.4 + i * 0.09, () => Combat.eProj({ x: b.x, y: b.y - 22, ang: a + rnd(-0.3, 0.3), speed: 150, dmg: b.dmg * 0.45, r: 5, life: 1.3, kind: 'fireball', col })); break;
-    case 'bolts': b.busy = 2.4; for (let i = 0; i < (ph === 2 ? 7 : 5); i++) q(0.3 + i * 0.45, () => Combat.hazard(P.x, P.y, 22, b.dmg * 1.1, 0.6, col, { strike: true })); break;
-    case 'tornado': b.busy = 1.4; for (let i = 0; i < (ph === 2 ? 3 : 2); i++) q(0.4 + i * 0.3, () => Combat.eProj({ x: b.x, y: b.y - 10, ang: a + (i - 1) * 0.6, speed: 55, dmg: b.dmg * 0.8, r: 10, life: 5, kind: 'tornado', col: '#5ff0e0', homing: 1.6 })); break;
-    case 'nova': b.busy = 2; Combat.eRing(b.x, b.y, 150, b.dmg * 1.3, 0.9, col);
-      for (let i = 0; i < 4; i++) { const an = i * 1.57 + Math.random(); Combat.hazard(b.x + Math.cos(an) * 90, b.y + Math.sin(an) * 70, 22, b.dmg, 1.1, col, { strike: true }); }
-      if (ph === 2) q(0.6, () => { for (let i = 0; i < 2; i++) { const m = makeEnemy('bat', 8, 'lightning', b.x + rnd(-40, 40), b.y + rnd(-30, 30)); m.temp = true; Game.enemies.push(m); } }); break;
-  }
-  SND.sfx('cast');
-}
-const BOSS_ATK = { brontus: ['charge', 'slam', 'rocks'], ignareth: ['fan', 'meteors', 'breath'], zephyron: ['bolts', 'tornado', 'nova'] };
-function updateBoss(b, dt) {
-  const P = Game.player;
-  if (b.dead) return;
-  b.flash = Math.max(0, b.flash - dt); b.contactT -= dt;
-  const dx = P.x - b.x, dy = P.y - b.y, d = Math.hypot(dx, dy) || 1;
-  if (!b.engaged) { if (d < 230 && P.hp > 0) Game.engageBoss(b); else return; }
-  if (d > 650 || P.hp <= 0) { Game.disengageBoss(b); return; }
-  b.face = dx >= 0 ? 1 : -1;
-  if (b.phase === 1 && b.hp < b.mx * 0.5) { b.phase = 2; b.spd *= 1.25; FX.text(b.x, b.y - 60, 'FASE 2!', '#ff4a4a', 14); FX.ring(b.x, b.y, 5, 160, 0.7, ELEMENTS[b.el].c, 3); FX.flashAdd(ELEMENTS[b.el].c, 0.4); FX.shk(6); SND.sfx('boss'); }
-  for (let i = b.pending.length - 1; i >= 0; i--) { const q = b.pending[i]; q.t -= dt; if (q.t <= 0) { b.pending.splice(i, 1); q.fn(); } }
-  if (b.kbx || b.kby) { moveEnt(b, b.kbx * dt, b.kby * dt); const f = Math.pow(0.02, dt); b.kbx *= f; b.kby *= f; }
-  const sm = enemyStatus(b, dt);
-  if (b.st.stun) delete b.st.stun; // bos kebal stun
-  b.busy -= dt; b.cdT -= dt;
-  if (b.dash) { moveEnt(b, b.dash.vx * dt, b.dash.vy * dt, 10); b.dash.t -= dt; FX.motif('chunk', b.x, b.y, [ELEMENTS[b.el].c], 1, 10); if (b.dash.t <= 0) b.dash = null; }
-  else if (b.busy <= 0) {
-    if (d > 90) moveEnt(b, dx / d * b.spd * Math.max(0.3, sm) * dt, dy / d * b.spd * Math.max(0.3, sm) * dt, 10);
-    if (b.cdT <= 0) { const list = BOSS_ATK[b.id]; bossAttack(b, list[(Math.random() * list.length) | 0]); b.cdT = b.phase === 2 ? 1.3 : 2.2; }
-  }
-  if (d < b.r + 8 && b.contactT <= 0) { b.contactT = 0.9; Combat.damagePlayer(b.dmg * (b.dash ? 1.6 : 0.8), b); }
-}
+};
