@@ -1,0 +1,13 @@
+/* AETHERIA - MAIN STYLES */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #10131c;
+    color: white;
+    font-family: Arial, sans-serif;
+}
