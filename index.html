@@ -1,34 +1,42 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
-    <meta name="theme-color" content="#10131c">
-    <title>Aetheria: Echoes of the Five Elements</title>
-
-    <link rel="stylesheet" href="css/main.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Aetheria: Echoes of the Five Elements</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
-
 <body>
-    <main id="game-container">
+  <div id="game-wrap">
+    <canvas id="game" width="480" height="270"></canvas>
 
-        <section id="game-screen">
-            <canvas id="gameCanvas">
-                Browser kamu tidak mendukung Canvas.
-            </canvas>
-        </section>
+    <!-- Lapisan antarmuka (diisi oleh js/ui.js) -->
+    <div id="ui">
+      <div id="hud"></div>
+      <div id="menu" class="layer"></div>
+      <div id="dialog" class="layer hidden"></div>
+    </div>
 
-        <section id="loading-screen">
-            <h1>AETHERIA</h1>
-            <p>Echoes of the Five Elements</p>
-            <span>Preparing the world...</span>
-        </section>
+    <!-- Kontrol sentuh untuk HP (diisi oleh js/input.js) -->
+    <div id="touch">
+      <div id="stick"><div id="stick-knob"></div></div>
+      <div id="buttons">
+        <button id="btn-attack" type="button">Serang</button>
+        <button id="btn-skill" type="button">Skill</button>
+        <button id="btn-elem" type="button">Elemen</button>
+      </div>
+    </div>
+  </div>
 
-    </main>
-
-    <script src="js/main.js"></script>
+  <!-- Urutan muat tidak boleh diubah -->
+  <script src="js/config.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/assets.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/combat.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
 </body>
 </html>
