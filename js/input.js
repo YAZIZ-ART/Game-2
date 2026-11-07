@@ -150,7 +150,11 @@ const Input = (function () {
     // Cegah menu tekan-lama, zoom cubit, dan gulir di HP
     document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
-    document.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+    // Daftar karakter (.menu-grid) tetap boleh digeser
+    document.addEventListener('touchmove', function (e) {
+      if (e.target.closest && e.target.closest('.menu-grid')) return;
+      e.preventDefault();
+    }, { passive: false });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
