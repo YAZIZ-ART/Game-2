@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d16">
+<title>AETHERIA : Echoes of the Five Elements</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+
+  <!-- ===== MUAT ===== -->
+  <div id="loadScr" class="scr">
+    <div class="logo small">AETHERIA</div>
+    <div class="loadtxt" id="loadTxt">Memuat aset…</div>
+    <div class="bar"><i id="loadBar"></i></div>
+  </div>
+
+  <!-- ===== MENU UTAMA ===== -->
+  <div id="titleScr" class="scr hidden">
+    <div class="logo">AETHERIA</div>
+    <div class="sub">Echoes of the Five Elements</div>
+    <div class="menu">
+      <button class="mbtn" id="bPlay">▶ MAIN</button>
+      <button class="mbtn" id="bOpt">⚙ OPSI</button>
+      <button class="mbtn" id="bCred">★ KREDIT</button>
+    </div>
+    <div class="ver">Gerak: WASD / Analog • Serang: Spasi • Skill: 1 2 3 • Kekuatan: Q E R • Dash: Shift</div>
+  </div>
+
+  <!-- ===== PILIH KARAKTER ===== -->
+  <div id="selScr" class="scr hidden">
+    <div class="stitle">PILIH KARAKTER</div>
+    <div class="selmain">
+      <div class="prev">
+        <canvas id="prevCv" width="256" height="256"></canvas>
+        <div class="cname" id="cName">-</div>
+        <div class="ctitle" id="cTitle">-</div>
+      </div>
+      <div class="info">
+        <div id="cStats"></div>
+        <div class="pass"><b id="cPassName"></b><span id="cPassDesc"></span></div>
+        <div id="cSkills"></div>
+      </div>
+    </div>
+    <div class="tiles" id="tiles"></div>
+    <div class="selbtns">
+      <button class="mbtn sm" id="bBack">◀ KEMBALI</button>
+      <button class="mbtn sm go" id="bGo">MULAI ▶</button>
+    </div>
+  </div>
+
+  <!-- ===== HUD ===== -->
+  <div id="hud" class="hidden">
+    <div class="tl">
+      <div class="hbox">
+        <canvas id="portrait" width="48" height="48"></canvas>
+        <div class="bars">
+          <div class="b hp"><i id="hpF"></i><span id="hpT"></span></div>
+          <div class="b mp"><i id="mpF"></i><span id="mpT"></span></div>
+          <div class="b xp"><i id="xpF"></i><span id="xpT"></span></div>
+        </div>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="tr">
+      <div class="stat" id="stat">Lv1</div>
+      <button class="mini" id="bAuto">AUTO</button>
+      <button class="mini" id="bPause">❚❚</button>
+    </div>
+    <div class="bossbar hidden" id="bossBar"><b id="bossName"></b><div class="b boss"><i id="bossF"></i></div></div>
+    <div id="vig"></div>
+    <div id="joy"><div id="joyKnob"></div></div>
+    <div class="acts">
+      <button class="ab p" data-btn="p0" id="p0"><em></em><span></span><u></u></button>
+      <button class="ab p" data-btn="p1" id="p1"><em></em><span></span><u></u></button>
+      <button class="ab p" data-btn="p2" id="p2"><em></em><span></span><u></u></button>
+      <button class="ab s" data-btn="s1" id="s1"><em></em><span>⚔</span><u>1</u></button>
+      <button class="ab s" data-btn="s2" id="s2"><em></em><span>✦</span><u>2</u></button>
+      <button class="ab s" data-btn="s3" id="s3"><em></em><span>★</span><u>3</u></button>
+      <button class="ab d" data-btn="dash" id="dashB"><em></em><span>»</span><u>⇧</u></button>
+      <button class="ab atk" data-btn="atk" id="atkB"><span>⚔</span></button>
+    </div>
+  </div>
+
+  <!-- ===== LEVEL UP ===== -->
+  <div id="lvScr" class="scr hidden">
+    <div class="lvtitle" id="lvTitle">LEVEL UP!</div>
+    <div class="lvsub">Pilih satu kekuatan</div>
+    <div class="cards" id="cards"></div>
+    <button class="mbtn sm" id="bReroll">🎲 ACAK ULANG (1)</button>
+  </div>
+
+  <!-- ===== JEDA / MATI / OPSI / KREDIT ===== -->
+  <div id="pauseScr" class="scr hidden">
+    <div class="stitle">JEDA</div>
+    <div class="menu">
+      <button class="mbtn" id="bResume">▶ LANJUT</button>
+      <button class="mbtn" id="bOpt2">⚙ OPSI</button>
+      <button class="mbtn" id="bQuit">⌂ MENU UTAMA</button>
+    </div>
+  </div>
+  <div id="deadScr" class="scr hidden">
+    <div class="stitle red">GUGUR</div>
+    <div class="dsum" id="dSum"></div>
+    <div class="menu">
+      <button class="mbtn" id="bRetry">↻ MAIN LAGI</button>
+      <button class="mbtn" id="bMenu">⌂ MENU UTAMA</button>
+    </div>
+  </div>
+  <div id="optScr" class="scr hidden">
+    <div class="stitle">OPSI</div>
+    <div class="opts">
+      <label><span>Musik</span><input type="checkbox" id="oMus"><input type="range" id="oMusV" min="0" max="100"></label>
+      <label><span>Efek suara</span><input type="checkbox" id="oSfx"><input type="range" id="oSfxV" min="0" max="100"></label>
+      <label><span>Serang otomatis</span><input type="checkbox" id="oAuto"></label>
+    </div>
+    <button class="mbtn sm" id="bOptBack">◀ KEMBALI</button>
+  </div>
+  <div id="credScr" class="scr hidden">
+    <div class="stitle">KREDIT</div>
+    <div class="cred">
+      <p><b>Karakter &amp; monster</b> — sprite sheet LPC (Universal LPC Spritesheet Generator), file yang kamu kirim, lengkap dengan <i>credits</i> di folder assets/monsters &amp; assets/characters.</p>
+      <p><b>Tileset</b> — Brown Rock Tileset V1 oleh kodzegura / Mushra Games.</p>
+      <p><b>Efek visual</b> — library pixelfx (MIT), dirender menjadi sprite sheet.</p>
+      <p><b>Efek suara</b> — The Essential Retro Video Game Sound Effects Collection oleh Juhani Junkala (CC0).</p>
+      <p><b>Sistem 40 kekuatan</b> — Passive / Active / Curse sesuai rancangan Aetheria.</p>
+    </div>
+    <button class="mbtn sm" id="bCredBack">◀ KEMBALI</button>
+  </div>
+
+  <div id="banner" class="hidden"></div>
+</div>
+<div id="rot"><div>↻ Putar layar ke mode <b>landscape</b> untuk bermain</div></div>
+
+<script src="js/manifest.js"></script>
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/world.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/player.js"></script>
+<script src="js/powers.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
