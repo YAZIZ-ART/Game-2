@@ -1,0 +1,117 @@
+{
+  "character": "Isolde",
+  "weapon": "Katana",
+  "passive": "Blade of Silence",
+  "direction_row_order": [
+    "up",
+    "left",
+    "down",
+    "right"
+  ],
+  "character_skill_sheet": {
+    "cell_px": 192,
+    "note": "tiap skill = 1 PNG, 4 baris arah, kolom = frame; frame_ms sudah disesuaikan dgn durasi skill"
+  },
+  "element_sheet": {
+    "cell_px": 128,
+    "cols": 12,
+    "rows": 13,
+    "layout": "baris 0-3 skill1 (up,left,down,right), 4-7 skill2, 8-11 skill3, baris 12 pasif; kolom terpakai: skill1=8, skill2=10, skill3=12, pasif=8 (loop)",
+    "frames_used": [
+      8,
+      10,
+      12,
+      8
+    ],
+    "directional": [
+      1,
+      1,
+      1,
+      0
+    ],
+    "element_fps": 12
+  },
+  "skills": [
+    {
+      "skill": 1,
+      "name": "Silent Draw",
+      "cooldown_s": 6,
+      "duration_s": 1.0,
+      "frames": 6,
+      "frame_ms": 167,
+      "sequence": [
+        "slash",
+        "slash",
+        "slash",
+        "slash",
+        "slash",
+        "slash"
+      ]
+    },
+    {
+      "skill": 2,
+      "name": "Moonlit Cross",
+      "cooldown_s": 11,
+      "duration_s": 2.0,
+      "frames": 19,
+      "frame_ms": 105,
+      "sequence": [
+        "slash",
+        "slash",
+        "slash",
+        "slash",
+        "slash",
+        "slash",
+        "1h_backslash",
+        "1h_backslash",
+        "1h_backslash",
+        "1h_backslash",
+        "1h_backslash",
+        "1h_backslash",
+        "1h_backslash",
+        "1h_backslash",
+        "1h_backslash",
+        "1h_backslash",
+        "1h_backslash",
+        "1h_backslash",
+        "1h_backslash"
+      ]
+    },
+    {
+      "skill": 3,
+      "name": "Thousand Silent Cuts",
+      "cooldown_s": 45,
+      "duration_s": 4.0,
+      "frames": 26,
+      "frame_ms": 154,
+      "sequence": [
+        "run",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run",
+        "slash_128",
+        "slash_128",
+        "slash_128",
+        "slash_128",
+        "slash_128",
+        "slash_128",
+        "slash",
+        "slash",
+        "slash",
+        "slash",
+        "slash",
+        "slash",
+        "slash_128",
+        "slash_128",
+        "slash_128",
+        "slash_128",
+        "slash_128",
+        "slash_128"
+      ]
+    }
+  ]
+}
