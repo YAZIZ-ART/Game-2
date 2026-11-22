@@ -1,0 +1,101 @@
+{
+  "character": "Sylas",
+  "weapon": "Whip",
+  "passive": "Predator's Reach",
+  "direction_row_order": [
+    "up",
+    "left",
+    "down",
+    "right"
+  ],
+  "character_skill_sheet": {
+    "cell_px": 192,
+    "note": "tiap skill = 1 PNG, 4 baris arah, kolom = frame; frame_ms sudah disesuaikan dgn durasi skill"
+  },
+  "element_sheet": {
+    "cell_px": 128,
+    "cols": 12,
+    "rows": 13,
+    "layout": "baris 0-3 skill1 (up,left,down,right), 4-7 skill2, 8-11 skill3, baris 12 pasif; kolom terpakai: skill1=8, skill2=10, skill3=12, pasif=8 (loop)",
+    "frames_used": [
+      8,
+      10,
+      12,
+      8
+    ],
+    "directional": [
+      1,
+      1,
+      1,
+      0
+    ],
+    "element_fps": 12
+  },
+  "skills": [
+    {
+      "skill": 1,
+      "name": "Serpent Lash",
+      "cooldown_s": 7,
+      "duration_s": 1.3,
+      "frames": 6,
+      "frame_ms": 217,
+      "sequence": [
+        "slash",
+        "slash",
+        "slash",
+        "slash",
+        "slash",
+        "slash"
+      ]
+    },
+    {
+      "skill": 2,
+      "name": "Binding Coil",
+      "cooldown_s": 16,
+      "duration_s": 2.5,
+      "frames": 8,
+      "frame_ms": 312,
+      "sequence": [
+        "tool_whip",
+        "tool_whip",
+        "tool_whip",
+        "tool_whip",
+        "tool_whip",
+        "tool_whip",
+        "tool_whip",
+        "tool_whip"
+      ]
+    },
+    {
+      "skill": 3,
+      "name": "Thousand Serpents",
+      "cooldown_s": 55,
+      "duration_s": 5.5,
+      "frames": 21,
+      "frame_ms": 262,
+      "sequence": [
+        "spellcast",
+        "spellcast",
+        "spellcast",
+        "spellcast",
+        "spellcast",
+        "spellcast",
+        "spellcast",
+        "tool_whip",
+        "tool_whip",
+        "tool_whip",
+        "tool_whip",
+        "tool_whip",
+        "tool_whip",
+        "tool_whip",
+        "tool_whip",
+        "slash",
+        "slash",
+        "slash",
+        "slash",
+        "slash",
+        "slash"
+      ]
+    }
+  ]
+}
