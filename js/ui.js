@@ -9,7 +9,7 @@ const UI = {
 
   /* ----- ukuran layar ----- */
   fit(){
-    const k = Math.min(innerWidth / 960, innerHeight / 540); this.scale = k;
+    const vv = window.visualViewport, vw = vv ? vv.width : innerWidth, vh = vv ? vv.height : innerHeight, k = Math.min(vw / 960, vh / 540); this.scale = k;
     $('#wrap').style.transform = `translate(-50%,-50%) scale(${k})`;
     const dpr = Math.min(devicePixelRatio || 1, 2), cv = G.canvas;
     let w = Math.round(960 * k * dpr), h = Math.round(540 * k * dpr); if (w > 1920) { h = Math.round(h * 1920 / w); w = 1920; }
@@ -27,6 +27,14 @@ const UI = {
     if (!s.mus) Music.stop(); else if (this.gestured) Music.start();
     $('#oMus').checked = s.mus; $('#oMusV').value = s.musV; $('#oSfx').checked = s.sfx; $('#oSfxV').value = s.sfxV; $('#oAuto').checked = s.auto;
     $('#bAuto').classList.toggle('on', s.auto);
+  },
+  isFull(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); },
+  goFull(toggle){
+    const el = document.documentElement;
+    try {
+      if (this.isFull()) { if (toggle) (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+      const rq = el.requestFullscreen || el.webkitRequestFullscreen; if (rq) { const p = rq.call(el, { navigationUI:'hide' }); if (p && p.then) p.then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }).catch(() => {}); }
+    } catch (e) {}
   },
   gesture(){ if (this.gestured) return; this.gestured = true; Snd.init(); this.applySettings(); Music.start(G.state === 'play' ? 'battle' : 'menu'); },
 
@@ -181,6 +189,10 @@ window.addEventListener('load', async () => {
   G.canvas = $('#cv'); G.ctx = G.canvas.getContext('2d'); UI.fit(); addEventListener('resize', () => UI.fit()); addEventListener('orientationchange', () => setTimeout(() => UI.fit(), 200));
   Input.init(); UI.loadSettings(); buildWorld();
   addEventListener('pointerdown', () => UI.gesture(), { capture:true });
+  addEventListener('click', () => { if (!UI.isFull() && !UI.noAutoFull) UI.goFull(false); }, { capture:true });
+  ['fullscreenchange', 'webkitfullscreenchange'].forEach(ev => document.addEventListener(ev, () => { setTimeout(() => UI.fit(), 80); setTimeout(() => UI.fit(), 400); }));
+  $('#bFull').addEventListener('click', e => { e.stopPropagation(); UI.noAutoFull = false; UI.goFull(true); });
+  $('#bFull2').addEventListener('pointerdown', e => { e.preventDefault(); UI.goFull(true); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { if (G.state === 'play') UI.pause(); if (Music.ctx) Music.ctx.suspend(); } else if (Music.ctx && Music.on) Music.ctx.resume(); });
   UI.show('loadScr');
   const jobs = [Assets.load('tiles', 'assets/tileset/BROWNROCK_Full_Tileset_V1.png'), Assets.loadFx('level-up'), Assets.loadFx('xp-orb'), Assets.loadFx('hit-spark'), Assets.loadFx('crit-hit'), Assets.loadFx('poof')];
