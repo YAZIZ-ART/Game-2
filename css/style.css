@@ -1,7 +1,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-html,body{margin:0;height:100%;background:#05060b;overflow:hidden;touch-action:none;overscroll-behavior:none}
+html,body{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;touch-action:none;overscroll-behavior:none}
 body{font-family:"Press Start 2P","Courier New",monospace;color:#f2ead8}
-#wrap{--u:1px;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:960px;height:540px;font-size:calc(var(--u)*10);overflow:hidden;background:#0b0d16;line-height:1.35}
+#wrap{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;font-size:10px;overflow:hidden;background:#0b0d16;line-height:1.35}
 #cv{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .hidden{display:none!important}
 button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
@@ -98,11 +98,11 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 .ab.s span{font-size:2.8em}
 
 /* level up */
-#lvScr{background:rgba(5,6,14,.82);gap:1em;z-index:20}
+#lvScr{background:rgba(5,6,14,.86);gap:.8em;z-index:20;overflow-y:auto;padding:.6em 0}
 .lvtitle{font-size:3.2em;color:#ffe36a;text-shadow:.1em .1em 0 #000,0 0 .8em rgba(255,200,70,.7)}
 .lvsub{font-size:1.2em;color:#c9d6ff;margin-top:-.4em}
-.cards{display:flex;gap:1.6em}
-.card{width:25em;min-height:29em;padding:1.1em;border:.3em solid;border-radius:.6em;background:linear-gradient(#1c1530,#0f0a1c);text-align:left;display:flex;flex-direction:column;gap:.7em;position:relative;transition:transform .12s}
+.cards{display:flex;gap:2em;justify-content:center;max-width:96em}
+.card{width:27em;min-height:24em;padding:1.1em;border:.3em solid;border-radius:.6em;background:linear-gradient(#1c1530,#0f0a1c);text-align:left;display:flex;flex-direction:column;gap:.7em;position:relative;transition:transform .12s}
 .card:hover,.card:active{transform:translateY(-.5em) scale(1.03)}
 .card.passive{border-color:#5ab0ff;box-shadow:0 0 1.2em rgba(90,176,255,.5)}
 .card.active{border-color:#ffa24a;box-shadow:0 0 1.2em rgba(255,162,74,.5)}
@@ -133,3 +133,10 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulatio
 
 #rot{display:none;position:fixed;inset:0;background:#05060b;color:#ffe9a8;text-align:center;align-items:center;justify-content:center;font-size:16px;padding:2em;z-index:99;line-height:2}
 @media (orientation:portrait){#rot{display:flex}}
+
+.card.sel{border-color:#fff!important;box-shadow:0 0 0 .25em #ffe36a,0 0 2.2em rgba(255,227,106,.95)!important;transform:translateY(-.6em) scale(1.04)}
+.card.sel::after{content:'✔ DIPILIH';position:absolute;top:-1.1em;right:.8em;background:#ffe36a;color:#2a1a00;font-size:.8em;padding:.3em .6em;border-radius:.3em}
+.lvrow{display:flex;gap:1.6em;align-items:center}
+#pickInfo{font-size:1.05em;color:#ffe9a8;min-height:2.6em;max-width:80em;line-height:1.6;text-align:center}
+.mbtn:disabled{opacity:.35;filter:grayscale(1);pointer-events:none}
+.mbtn.conf{background:linear-gradient(#2c6a3a,#173a22);border-color:#8de08d;box-shadow:0 .25em 0 #2a6a2a;font-size:1.7em;padding:.8em 2.4em}
