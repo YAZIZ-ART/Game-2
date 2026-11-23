@@ -9,12 +9,15 @@ const UI = {
 
   /* ----- ukuran layar ----- */
   fit(){
-    const vv = window.visualViewport, vw = vv ? vv.width : innerWidth, vh = vv ? vv.height : innerHeight, k = Math.min(vw / 960, vh / 540); this.scale = k;
-    $('#wrap').style.transform = `translate(-50%,-50%) scale(${k})`;
+    const vv = window.visualViewport, vw = Math.round(vv ? vv.width : innerWidth), vh = Math.round(vv ? vv.height : innerHeight), wrap = $('#wrap');
+    wrap.style.width = vw + 'px'; wrap.style.height = vh + 'px';
+    const ui = Math.min(vw / 960, vh / 540); this.scale = ui; wrap.style.fontSize = (10 * ui) + 'px';   // UI proporsional, tidak ikut zoom kamera
     const dpr = Math.min(devicePixelRatio || 1, 2), cv = G.canvas;
-    let w = Math.round(960 * k * dpr), h = Math.round(540 * k * dpr); if (w > 1920) { h = Math.round(h * 1920 / w); w = 1920; }
-    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-    G.view = { w:480, h:270, z:cv.height / 270 }; G.ctx.imageSmoothingEnabled = false;
+    let cw = Math.round(vw * dpr), ch = Math.round(vh * dpr); if (cw > 2200) { ch = Math.round(ch * 2200 / cw); cw = 2200; }
+    if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+    // zoom kamera: lebih jauh dari sebelumnya, menyesuaikan tinggi layar; area terlihat mengikuti rasio layar (tidak gepeng)
+    const eff = cw / vw, zc = clamp(vh / 360, 1.25, 2.6), Z = Math.max(1, Math.round(zc * eff * 2) / 2);
+    G.view = { w:cw / Z, h:ch / Z, z:Z }; G.ctx.imageSmoothingEnabled = false;
     if (G.groundPat) makeGround();
   },
   loadSettings(){
@@ -130,12 +133,12 @@ const UI = {
 
   /* ----- level up ----- */
   openLevelUp(){
-    G.state = 'levelup'; G.rerollUsed = false; Input.pressed = {}; Input.held = {}; Input.joy.x = Input.joy.y = 0;
+    G.state = 'levelup'; G.rerollUsed = false; G.confirming = false; G.picked = null; Input.pressed = {}; Input.held = {}; Input.joy.x = Input.joy.y = 0;
     $('#lvTitle').textContent = 'LEVEL UP!  Lv ' + G.P.lv; this.renderCards(rollChoices()); this.show('lvScr');
     const r = $('#bReroll'); r.disabled = false; r.textContent = '🎲 ACAK ULANG (1)'; r.style.opacity = 1;
   },
   renderCards(cards){
-    const box = $('#cards'); box.innerHTML = '';
+    const box = $('#cards'); box.innerHTML = ''; G.picked = null; $('#bConfirm').disabled = true; $('#pickInfo').textContent = 'Ketuk satu kartu untuk memilih';
     cards.forEach(c => {
       const b = document.createElement('button'); let h;
       if (c.ritual) { b.className = 'card misc'; h = `<div class="tag" style="color:#8de08d">RITUAL</div><div class="ic">🕯</div><h3>Ritual Pemurnian</h3><div class="eff">Lepaskan kutukan yang sedang aktif</div><div class="dsc">Kamu telah mengalahkan ${RITUAL_KILLS}+ monster Unik/Bos selama dikutuk. Kutukan boleh dilepas tanpa konsekuensi.</div>`; }
@@ -146,14 +149,24 @@ const UI = {
         if (p.type === 'curse') h += `<div class="gain">▲ ${p.gain}</div><div class="cost">▼ ${p.cost}</div><div class="meta">Maks 1 kutukan. Dilepas lewat Ritual Pemurnian.</div>`;
         else h += `<div class="dsc">${p.desc}</div>` + (p.type === 'active' ? `<div class="meta">CD ${p.cd} dtk • MP ${p.mp}</div>` : '');
       }
-      b.innerHTML = h; b.onclick = () => this.choose(c); box.appendChild(b);
+      b.innerHTML = h; b.onclick = () => this.pickCard(c, b); box.appendChild(b);
     });
   },
+  pickCard(c, el){
+    if (G.confirming) return; G.picked = c; Snd.play('menu', .6);
+    $$('#cards .card').forEach(x => x.classList.toggle('sel', x === el)); $('#bConfirm').disabled = false;
+    let nm, ds;
+    if (c.ritual) { nm = 'Ritual Pemurnian'; ds = 'Lepaskan kutukan yang sedang aktif.'; }
+    else if (c.fallback) { nm = 'Berkah Dasar'; ds = 'ATK +6% permanen & pulihkan 30% HP.'; }
+    else { nm = c.p.name + ' Lv ' + c.lv; ds = c.p.lvDesc(c.lv) + ' — ' + (c.p.type === 'curse' ? c.p.gain + ' / Harga: ' + c.p.cost : c.p.desc); }
+    $('#pickInfo').textContent = nm + ': ' + ds;
+  },
+  confirm(){ if (G.confirming || !G.picked) return; G.confirming = true; $('#bConfirm').disabled = true; this.choose(G.picked); },
   choose(c){
     takeCard(c); G.levelUps--; this.hide('lvScr'); Input.pressed = {};
     if (G.levelUps > 0) this.openLevelUp(); else G.state = 'play';
   },
-  reroll(){ if (G.rerollUsed) return; G.rerollUsed = true; Snd.play('pick', .6); this.renderCards(rollChoices()); const r = $('#bReroll'); r.textContent = '🎲 SUDAH DIPAKAI'; r.style.opacity = .4; },
+  reroll(){ if (G.rerollUsed || G.confirming) return; G.rerollUsed = true; Snd.play('pick', .6); this.renderCards(rollChoices()); const r = $('#bReroll'); r.textContent = '🎲 SUDAH DIPAKAI'; r.style.opacity = .4; },
 
   /* ----- jeda / mati ----- */
   pause(){ if (G.state !== 'play') return; G.state = 'paused'; Input.pressed = {}; Input.held = {}; this.show('pauseScr'); },
@@ -207,7 +220,7 @@ window.addEventListener('load', async () => {
   on('bBack', () => UI.toTitle()); on('bGo', () => UI.start(UI.sel));
   on('bResume', () => UI.resume()); on('bOpt2', () => { UI.hide('pauseScr'); UI.show('optScr'); }); on('bQuit', () => UI.toTitle());
   on('bRetry', () => UI.start(G.P.name)); on('bMenu', () => UI.toTitle());
-  on('bReroll', () => UI.reroll());
+  on('bReroll', () => UI.reroll()); $('#bConfirm').addEventListener('click', () => { if (!G.confirming && G.picked) Snd.play('select', .6); UI.confirm(); });
   $('#bPause').addEventListener('pointerdown', e => { e.preventDefault(); UI.pause(); });
   $('#bAuto').addEventListener('pointerdown', e => { e.preventDefault(); UI.settings.auto = !UI.settings.auto; UI.applySettings(); UI.saveSettings(); });
   const bind = (id, key, num) => $('#' + id).addEventListener('input', e => { UI.settings[key] = num ? +e.target.value : e.target.checked; UI.applySettings(); UI.saveSettings(); });
