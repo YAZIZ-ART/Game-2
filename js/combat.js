@@ -180,7 +180,7 @@ function pickMonsterType(){
 function spawnRing(key, lv){
   const P = G.P;
   for (let i = 0; i < 12; i++) {
-    const a = rand(0, 6.283), d = rand(285, 360), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
+    const a = rand(0, 6.283), d = Math.hypot(G.view.w, G.view.h) / 2 + rand(40, 110), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
     if (x < 70 || y < 70 || x > WORLD - 70 || y > WORLD - 70 || blockedAt(x, y, 14)) continue;
     return spawnMonster(key, lv, x, y, key === 'Minotour');
   }
@@ -226,7 +226,7 @@ function updateMonsters(dt){
     }
     const c = collide(a.x, a.y, a.r * .8); a.x = c.x; a.y = c.y;
   }
-  G.mons = G.mons.filter(m => !m.dead && dist(m.x, m.y, P.x, P.y) < 900);
+  G.mons = G.mons.filter(m => !m.dead && dist(m.x, m.y, P.x, P.y) < Math.max(900, Math.hypot(G.view.w, G.view.h) / 2 + 500));
 }
 
 /* ---------------- proyektil ---------------- */
