@@ -11,7 +11,7 @@ const UI = {
   fit(){
     const vv = window.visualViewport, vw = Math.round(vv ? vv.width : innerWidth), vh = Math.round(vv ? vv.height : innerHeight), wrap = $('#wrap');
     wrap.style.width = vw + 'px'; wrap.style.height = vh + 'px';
-    const ui = Math.min(vw / 960, vh / 540); this.scale = ui; wrap.style.fontSize = (10 * ui) + 'px';   // UI proporsional, tidak ikut zoom kamera
+    // ukuran UI diatur per kelompok lewat CSS (clamp/dvh/vw); tidak ada scale global dan terpisah dari zoom kamera
     const dpr = Math.min(devicePixelRatio || 1, 2), cv = G.canvas;
     let cw = Math.round(vw * dpr), ch = Math.round(vh * dpr); if (cw > 2200) { ch = Math.round(ch * 2200 / cw); cw = 2200; }
     if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
